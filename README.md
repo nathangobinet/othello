@@ -4,13 +4,13 @@ This project consists of cerating an Othello game using the Socket API in C lang
 The goal is to communicate between two players running locally on the same machine.
 
 
-# Fonctionement / Prise de notes
+## Fonctionement / Prise de notes
 
 Il y'a deux grandes étapes dans l'implémentation du jeu:
 - La partie sysytème avec gestion des threads et des sockets
 - La partie jeu avec la gestion des coups et des points
 
-## La partie système :
+### La partie système :
 
 On lance un programme en spécifiant son port d'écoute grâce à la ligne de code : ./othello <num_port_ecoute>
 On lance deux programmes avec chacun un port d'écoute différent.
