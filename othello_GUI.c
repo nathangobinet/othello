@@ -292,7 +292,7 @@ static void coup_joueur(GtkWidget *p_case)
   
 
   /***** TO DO *****/
-    
+  
 }
 
 /* Fonction retournant texte du champs adresse du serveur de l'interface graphique */
@@ -375,7 +375,7 @@ void affiche_fenetre_perdu(void)
 static void clique_connect_serveur(GtkWidget *b)
 {
   /***** TO DO *****/
-  
+  change_img_case(1,1,1);
 }
 
 /* Fonction desactivant bouton demarrer partie */
@@ -654,7 +654,7 @@ static void * f_com_socket(void *p_arg)
         if(i==fd_signal)
         {
           /* Cas où de l'envoie du signal par l'interface graphique pour connexion au joueur adverse */
-          
+          printf("Cas où de l'envoie du signal par l'interface graphique pour connexion au joueur adverse");
           
           /***** TO DO *****/
           
@@ -662,7 +662,7 @@ static void * f_com_socket(void *p_arg)
       
         if(i==sockfd)
         { // Acceptation connexion adversaire
-	  
+          printf("Cas où de l'envoie du signal par l'interface graphique pour connexion au joueur adverse");
 	    
           /***** TO DO *****/
 	    
@@ -671,7 +671,7 @@ static void * f_com_socket(void *p_arg)
       }
       else
       { // Reception et traitement des messages du joueur adverse
-      
+        printf("Cas où de l'envoie du signal par l'interface graphique pour connexion au joueur adverse");
       
           /***** TO DO *****/
 
@@ -802,9 +802,32 @@ int main (int argc, char ** argv)
 
      
          /***** TO DO *****/
-         
-         // Initialisation socket et autres objets, et création thread pour communications avec joueur adverse
-       
+         /** Création de la socket en mode listen **/
+
+
+        struct sockaddr_in addrinfo;
+        
+        addrinfo.sin_family = AF_INET;
+        addrinfo.sin_port = htons(port);
+        addrinfo.sin_addr.s_addr = INADDR_ANY;
+
+        if((sockfd = socket(PF_INET, SOCK_STREAM, 0)) == -1) {
+          perror("server: socket");
+          return 1;
+        }
+        if(bind(sockfd, (struct sockaddr*)&addrinfo, sizeof(addrinfo)) == -1)
+        { 
+          close(sockfd);
+          perror("server: bind");
+          return 1;
+        }
+
+        listen(sockfd, 5);
+
+         /** Création du thread **/
+         if(pthread_create(&thr_id, NULL, f_com_socket, NULL) == -1) {
+           perror("error creating thread");
+         }
 	 
          gtk_widget_show_all(p_win);
          gtk_main();
