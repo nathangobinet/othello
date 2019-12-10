@@ -4,7 +4,8 @@
             "name": "Mac",
             "includePath": [
                 "${workspaceFolder}/**",
-                "/usr/local/Cellar/gtk+3/3.24.12_1/include/gtk-3.0"
+                "/usr/local/Cellar/gtk+3/3.24.12_1/include/gtk-3.0",
+                "/usr/local/include"
             ],
             "defines": [],
             "macFrameworkPath": [
