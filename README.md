@@ -21,3 +21,6 @@ Lorsqu'on appuie sur le bouton "démarrer partie", le programme doit fermer son 
 Il doit ensuite créer un nouveau thread avec une  nouvelle socket qui va se connecter sur l'autre programme (à l'aide de son port).
 A partir de ce moment les deux programmes peuvent échanger des informations.
 Il est donc utile de définir la facon dont les deux programmes vont s'échanger les deux informations (le protocole de comunication).
+
+### Compilation :
+gcc -Wall -o othello_GUI othello_GUI.c $(pkg-config --cflags --libs gtk+-3.0)  -L/opt/X11/lib -lX11
