@@ -233,6 +233,93 @@ void change_img_case(int col, int lig, int couleur_j)
 	}
 }
 
+int estAdjacent(int col, int ligne) {
+	if( ((col+1 <= 7) && (damier[col+1][ligne] != -1))
+	|| ((col-1 >= 0) && (damier[col-1][ligne] != -1))
+	|| ((ligne+1 <= 7) && (damier[col][ligne+1] != -1))
+	|| ((ligne-1 >= 0) && (damier[col][ligne-1] != -1))) {
+		return 1;
+	}
+	return 0;
+}
+
+void encadrementVertical(col, ligne, couleur){
+	if(((col+1 <= 7) && damier[col+1][ligne] == (couleur ^ 1)) &&((col+2 <= 7) && damier[col+2][ligne] == couleur)) {
+		damier[col+1][ligne] = couleur;
+		change_img_case(col+1,ligne, couleur);
+	}
+	if(((col-1 > 0) && damier[col-1][ligne] == (couleur ^ 1)) &&((col-2 > 0) && damier[col-2][ligne] == couleur)) {
+		damier[col-1][ligne] = couleur;
+		change_img_case(col-1,ligne, couleur);
+	}
+}
+
+void encadrementHorizontal(col, ligne, couleur) {
+	if(((ligne+1 <= 7) && damier[col][ligne+1] == (couleur ^ 1)) &&((ligne+2 <= 7) && damier[col][ligne+2] == couleur)) {
+		damier[col][ligne+1] = couleur;
+		change_img_case(col,ligne+1, couleur);
+	}
+	if(((ligne-1 > 0) && damier[col][ligne-1] == (couleur ^ 1)) &&((ligne-2 > 0) && damier[col][ligne-2] == couleur)) {
+		damier[col][ligne-1] = couleur;
+		change_img_case(col,ligne-1, couleur);
+	}
+}
+
+void encadrementDiagonaleGauche(col, ligne, couleur) {
+	if(((ligne-1 > 0) && (col-1 > 0) && damier[col-1][ligne-1] == (couleur ^ 1)) 
+	&& ((ligne-2 > 0) && (col-2 > 0)  && damier[col-2][ligne-2] == couleur)) {
+		damier[col-1][ligne-1] = couleur;
+		change_img_case(col-1,ligne-1, couleur);
+	}
+	if(((ligne+1 <= 7) && (col+1 <= 7) && damier[col+1][ligne+1] == (couleur ^ 1)) &&
+		((ligne+2 <= 7) && (col+2 <= 7)  && damier[col+2][ligne+2] == couleur)) {
+		damier[col+1][ligne+1] = couleur;
+		change_img_case(col+1,ligne+1, couleur);
+	}
+}
+
+void encadrementDiagonaleDroite(col, ligne, couleur) {
+	if(((ligne-1 > 0) && (col+1 <=7) && damier[col+1][ligne-1] == (couleur ^ 1)) 
+	&& ((ligne-2 > 0) && (col+2 <= 7)  && damier[col+2][ligne-2] == couleur)) {
+		damier[col+1][ligne-1] = couleur;
+		change_img_case(col+1,ligne-1, couleur);
+	}
+	if(((ligne+1 <= 7) && (col-1 > 0) && damier[col-1][ligne+1] == (couleur ^ 1)) &&
+		((ligne+2 <= 7) && (col-2 > 0)  && damier[col-2][ligne+2] == couleur)) {
+		damier[col-1][ligne+1] = couleur;
+		change_img_case(col-1,ligne+1, couleur);
+	}
+}
+
+void encadrement(col, ligne, couleur){
+	//Implémentation incorrect :
+	//Il faut regarder toute la ligne et pas seulement celui à + 2
+	/**
+	 * TODO :
+	 * Il faut donc :
+	 * Partir de la case jouée
+	 * Et dans chaque direction regardé si il y'a un de la même couleur que la case joué
+	 * Si oui, on remplace tous
+	 **/
+	encadrementVertical(col, ligne, couleur);
+	encadrementHorizontal(col, ligne, couleur);
+	encadrementDiagonaleGauche(col, ligne, couleur);
+	encadrementDiagonaleDroite(col, ligne, couleur);
+}
+
+int jouer(int col, int ligne, int couleur_j) {
+	if(damier[col][ligne] == -1){
+		if(estAdjacent(col, ligne) == 1) {
+			damier[col][ligne]=couleur_j;
+			change_img_case(col,ligne, couleur_j);
+			encadrement(col,ligne, couleur_j);
+			return 1;
+		} 
+	}
+	return 0;
+}
+
+
 /* Fonction permettant changer nom joueur blanc dans cadre Score */
 void set_label_J1(char *texte)
 {
@@ -296,12 +383,17 @@ static void coup_joueur(GtkWidget *p_case)
 	
 	// Traduction coordonnees damier en indexes matrice damier
 	coord_to_indexes(gtk_buildable_get_name(GTK_BUILDABLE(gtk_bin_get_child(GTK_BIN(p_case)))), &col, &lig);
-	
+
 	/***** TO DO *****/
 	//tester si coup valide
 	//Modifier damier et affichage
 	//Envoyer l'information 
 	//Quand on place une case
+	if(jouer(col, lig, couleur) == 1){
+		sprintf(buf, "%u, %u",  htons((uint16_t) col), htons((uint16_t) lig));
+		send(newsockfd , buf , strlen(buf) , 0); 
+		gele_damier();
+	}
 }
 
 /* Fonction retournant texte du champs adresse du serveur de l'interface graphique */
@@ -398,7 +490,15 @@ static void clique_connect_adversaire(GtkWidget *b)
 {
 	if(newsockfd==-1)
 	{
+		//Allow to clear the FD for the client first connection
 		disableAccept = 1;
+
+		//Set the client color to 0 -> Noir
+		couleur = 0;
+
+		//Init the damier
+		init_interface_jeu();
+
 		// Deactivation bouton demarrer partie
         gtk_widget_set_sensitive((GtkWidget *) gtk_builder_get_object (p_builder, "button_start"), FALSE);
 		
@@ -560,7 +660,13 @@ void init_interface_jeu(void)
 	change_img_case(4, 3, 0);
 	change_img_case(3, 4, 0);
 	change_img_case(4, 4, 1);
-	
+
+	//Init matrice damier
+	damier[3][3] = 1;
+	damier[4][3] = 0;
+	damier[3][4] = 0;
+	damier[4][4] = 1;
+
 	// Initialisation des scores et des joueurs
 	if(couleur==1)
 	{
@@ -641,7 +747,7 @@ static void connect_socket_adversaire(int sig)
 			perror("client: connect");
 			exit(1);
 		}else {
-			printf("connected \n");
+			printf("Client connected \n");
 		}
 
 }
@@ -682,36 +788,12 @@ static void * f_com_socket(void *p_arg)
 		
 		return 0;
 	}
-		
-//   fd_signal = signalfd(-1, &signal_mask, 0);
-//     
-//   if(fd_signal == -1)
-//   {
-//     printf("[port joueur %d] Erreur signalfd\n", port);
-// 
-//     return 0;
-//   }
-// 
-//   /* Ajout descripteur du signal dans ensemble de descripteur utilisé avec fonction select */
-//   FD_SET(fd_signal, &master);
-//   
-//   if(fd_signal>fdmax)
-//   {
-//     fdmax=fd_signal;
-//   }
 
-	
-	printf("hey i'm in the thread \n");
 
 	while(1)
 	{
-
-		printf("hey i'm in the while \n");
 		read_fds=master;	// copie des ensembles
-
-		printf("I did read_fds=master\n");
 		
-//     if(select(fdmax+1, &read_fds, &write_fds, NULL, NULL)==-1)
 		if((pselect(fdmax+1, &read_fds, &write_fds, NULL, NULL, &signal_mask_org)==-1) && errno != EINTR)
 		{
 			perror("Problème avec select");
@@ -721,8 +803,6 @@ static void * f_com_socket(void *p_arg)
 		if(disableAccept == 1) {
 			FD_CLR(sockfd, &read_fds);
 		}
-
-		printf("I did pselect\n");
 		
 		printf("[Port joueur %d] Entree dans boucle for\n", port);
 		for(i=0; i<=fdmax; i++)
@@ -731,17 +811,6 @@ static void * f_com_socket(void *p_arg)
 
 			if(FD_ISSET(i, &read_fds))
 			{
-//         if(i==fd_signal)
-//         {
-//           /* Cas où de l'envoie du signal par l'interface graphique pour connexion au joueur adverse */
-//           
-//           
-//           /***** TO DO *****/
-//           
-//         }
-			
-				printf("FD_ISSET OK \n");
-
 				if(i==sockfd)
 				{ // Acceptation connexion adversaire
 		
@@ -761,17 +830,41 @@ static void * f_com_socket(void *p_arg)
 						{
 							fdmax=newsockfd;
 						}
+						
+						//Set the server color to 1 -> Blanc
+						couleur = 1;
 
-						char buffer[1024] = {0}; 
-						int valread = read( newsockfd , buffer, 1024); 
-						printf("%s\n",buffer ); 
+						//Init the damier
+						init_interface_jeu();
+						gele_damier();
+
+						printf("Server connected\n");
 					}
 
 					gtk_widget_set_sensitive((GtkWidget *) gtk_builder_get_object (p_builder, "button_start"), FALSE);
 				} else { 
 					
-					// Reception et traitement des messages du joueur adverse
-					/***** TO DO *****/
+					char buffer[MAXDATASIZE] = {0};
+					char *token, *saveptr;
+					uint16_t uCol, uLigne;
+					int col, ligne;
+
+					//Read the message
+					read( newsockfd , buffer, 1024); 
+
+					//Parse the message
+					token=strtok_r(buffer, ",", &saveptr);
+					sscanf(token, "%hu", &uCol);
+					token=strtok_r(NULL, ",", &saveptr);
+					sscanf(token, "%hu", &uLigne);
+					col = (int) ntohs(uCol);
+					ligne = (int) ntohs(uLigne);
+
+					printf("couleur : %d, inverse : %d", couleur, couleur ^ 1);
+
+					jouer(col, ligne, couleur ^ 1 );
+
+					degele_damier();
 				
 				}
 			}
@@ -926,9 +1019,7 @@ int main (int argc, char ** argv)
 
 				listen(sockfd, 5);
 
-				FD_ZERO(&master);
 				FD_SET(sockfd, &master);
-
 				if(sockfd>fdmax)
 				{
 					fdmax=sockfd;
