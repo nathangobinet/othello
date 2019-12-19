@@ -232,8 +232,8 @@ void change_img_case(int col, int lig, int couleur_j)
 		gtk_image_set_from_file(GTK_IMAGE(gtk_builder_get_object(p_builder, coord)), "UI_Glade/case_noir.png");
 	}
 }
-
-void partieFinie(score_blanc, score_noire){
+/* Fonction permettant de finir la partie, le joueur ayant le plus haut score recevre le popup "gagne" */
+void partie_finie(score_blanc, score_noire){
 	if((score_blanc > score_noire) && couleur == 1) {
 		affiche_fenetre_gagne();
 	} else if ((score_noire > score_blanc) && couleur == 0) { 
@@ -243,7 +243,11 @@ void partieFinie(score_blanc, score_noire){
 	}
 }
 
-int estAdjacent(int col, int ligne) {
+/* Fonction permettant de savoir si une coordonées est adjacente à un pion */
+int est_adjacent(int col, int ligne) {
+	//On vérifie que chaque déplacement se situe dans le plateau
+	//Puis on vérifie si un des deplacement n'est pas vide
+	//Cela veut dire qu'un pion se trouve à cotés
 	if( ((col+1 <= 7) && (damier[col+1][ligne] != -1))
 	|| ((col-1 >= 0) && (damier[col-1][ligne] != -1))
 	|| ((ligne+1 <= 7) && (damier[col][ligne+1] != -1))
@@ -253,7 +257,8 @@ int estAdjacent(int col, int ligne) {
 	return 0;
 }
 
-int estDansLePlateau(int col, int ligne) {
+/* Fonction permettant de savoir si une coordonnée se situe dans le plateau */
+int est_dans_le_plateau(int col, int ligne) {
 	if((col <= 7)  && (col >= 0) && (ligne <= 7) && (ligne >= 0)) 
 	{
 		return 1;
@@ -261,26 +266,31 @@ int estDansLePlateau(int col, int ligne) {
 	return 0;
 }
 
-void update_damier(int col, int ligne, int couleur_j) {
+/* Fonction permettant de mettre à jour le damier en modifiant la fenêtre et la représentation matricielle */
+void mise_a_jour_damier(int col, int ligne, int couleur_j) {
 	damier[col][ligne] = couleur_j;
 	change_img_case(col, ligne, couleur_j);
 }
 
+/* Fonction permettant d'encadrer les autres pions */
 void encadrer(col, ligne, couleur_j, deplacementX, deplacementY){
 	int index = 1;
-	while((estDansLePlateau(col + deplacementX * index, ligne + deplacementY * index) == 1) &&
+	//On compte le nombre de pion de l'autre couleur dans la direction du deplacement
+	while((est_dans_le_plateau(col + deplacementX * index, ligne + deplacementY * index) == 1) &&
 	(damier[col + deplacementX * index][ligne + deplacementY * index] == (couleur_j ^ 1))) {
 		index++;
 	}
-	if((estDansLePlateau(col + deplacementX * index, ligne + deplacementY * index) == 1) &&
+	//Si au bout des pions de l'autre couleur, il y'a un pion de notre couleur
+	if((est_dans_le_plateau(col + deplacementX * index, ligne + deplacementY * index) == 1) &&
 	(damier[col + deplacementX * index][ligne + deplacementY * index] == couleur_j)) {
+		//On remplace tous les pions par lesquelles on est passé par les notres
 		for(int i = 0; i < index; i ++) {
-			update_damier(col + deplacementX * i,ligne + deplacementY * i, couleur_j);
+			mise_a_jour_damier(col + deplacementX * i,ligne + deplacementY * i, couleur_j);
 		}
 	}
 }
 
-
+/* Fonction permettant d'encadrer dans chacune des directions */
 void encadrement(col, ligne, couleur){
 	encadrer(col, ligne, couleur, 1 , 0);
 	encadrer(col, ligne, couleur, 1 , 1);
@@ -292,14 +302,18 @@ void encadrement(col, ligne, couleur){
 	encadrer(col, ligne, couleur, -1 , 1);
 }
 
-int get_cases(int* nb_blanc, int* nb_noir)
+/* Fonction qui permet de parcourir tous le damier et de compter le nombre de case de chaque type */
+int compter_cases(int* nb_blanc, int* nb_noir)
 {
 	int nb_vide = 0;
     int i, j;
+	//Pour chaque colonne
     for (i = 0; i <= 7; i++)
     {
+		//Pour chaque ligne
         for (j = 0; j <= 7; j++)
         {
+			// On ajoute 1 au compteur du type
             if(damier[i][j] == 0){
                 *nb_noir = *nb_noir + 1;
             } else if(damier[i][j] == 1){
@@ -312,26 +326,27 @@ int get_cases(int* nb_blanc, int* nb_noir)
 	return nb_vide;
 }
 
-void getScoreAndCheckFinish(){
+/** Fonction qui met les scores des deux joueurs et qui vérifie si la partie est finie */
+void mettre_score_et_verif_fin(){
 		int score_blanc = 0;
 		int score_noir = 0;
-		int nb_vide = get_cases(&score_blanc, &score_noir);
+		int nb_vide = compter_cases(&score_blanc, &score_noir);
 
 		set_score_J1(score_blanc);
 		set_score_J2(score_noir);
 
-		printf("nb_vide : %d, score_blanc: %d, score_noir= %d", nb_vide, score_blanc, score_noir);
 		if(nb_vide == 0 || score_blanc == 0 || score_noir == 0) {
-			partieFinie(score_blanc, score_noir);
+			partie_finie(score_blanc, score_noir);
 		}
 }
 
+// Fonction qui permet de verifié si l'utilisateur peut jouer, et si oui, effectue les modifications liés à son coup
 int jouer(int col, int ligne, int couleur_j) {
 	if(damier[col][ligne] == -1){
-		if(estAdjacent(col, ligne) == 1) {
-			update_damier(col, ligne, couleur_j);
+		if(est_adjacent(col, ligne) == 1) {
+			mise_a_jour_damier(col, ligne, couleur_j);
 			encadrement(col,ligne, couleur_j);
-			getScoreAndCheckFinish();
+			mettre_score_et_verif_fin();
 			return 1;
 		} 
 	}
@@ -402,12 +417,9 @@ static void coup_joueur(GtkWidget *p_case)
 	// Traduction coordonnees damier en indexes matrice damier
 	coord_to_indexes(gtk_buildable_get_name(GTK_BUILDABLE(gtk_bin_get_child(GTK_BIN(p_case)))), &col, &lig);
 
-	/***** TO DO *****/
-	//tester si coup valide
-	//Modifier damier et affichage
-	//Envoyer l'information 
-	//Quand on place une case
+	//Si l'utilisateur peut jouer
 	if(jouer(col, lig, couleur) == 1){
+		//On envoie les informations relatives à son coup
 		sprintf(buf, "%u, %u",  htons((uint16_t) col), htons((uint16_t) lig));
 		send(newsockfd , buf , strlen(buf) , 0); 
 		gele_damier();
@@ -527,7 +539,6 @@ static void clique_connect_adversaire(GtkWidget *b)
 		printf("[Port joueur : %d] Adresse j2 lue : %s\n",port, addr_j2);
 		printf("[Port joueur : %d] Port j2 lu : %s\n", port, port_j2);
 
-		
 		pthread_kill(thr_id, SIGUSR1); 
 	}
 }
@@ -699,9 +710,7 @@ void init_interface_jeu(void)
 
 	set_score_J1(2);
 	set_score_J2(2);
-	
-	/***** TO DO *****/
-	
+
 }
 
 /* Fonction reinitialisant la liste des joueurs sur l'interface graphique */
@@ -725,40 +734,39 @@ void affich_joueur(char *login, char *adresse, char *port)
 	gtk_text_buffer_insert_at_cursor(GTK_TEXT_BUFFER(gtk_text_view_get_buffer(GTK_TEXT_VIEW(gtk_builder_get_object(p_builder, "textview_joueurs")))), joueur, strlen(joueur));
 }
 
+/* Fonction executé à l'envoie du signal par l'interface graphique pour connexion au joueur adverse */
+/* Ferme l'ancienne socket d'écoute et créer une nouvelle socket client sur le port & l'ip selectionné */
 static void connect_socket_adversaire(int sig)
-{
-		printf("Connexion adversaire [Reception signal SIGUSR1] sig=%d\n", sig);
-		
-		/* Cas où de l'envoie du signal par l'interface graphique pour connexion au joueur adverse */
-
-		// Create a new socket 
-		// sur adresse ip & port renseigné
+{		
 		struct sockaddr_in addrinfo;
 				
 		addrinfo.sin_family = AF_INET;
 		addrinfo.sin_port = htons(atoi(port_j2));
-
+		//Création structure addr pour connexion au serveur
 		if(inet_pton(AF_INET, addr_j2 , &(addrinfo.sin_addr))<=0)  
 		{ 
 			perror("\nInvalid address\n"); 
 			exit(1);
 		}
-
+		//Création nouvelle socket
 		if((newsockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
 			perror("client: socket");
 			exit(1);
 		}
 
-		//Close sockfd
+		//Fermeture de l'ancienne requête aprés créationn de lma nouvelle pour avoir un numéro différent
 		close(sockfd);
+		//Retire la socket du registre de sockets
 		FD_CLR(sockfd, &master);
 
+		//Ajout de la nouvelle socket au registre de socket
 		FD_SET(newsockfd, &master);
 		if(newsockfd>fdmax)
 		{
 			fdmax=newsockfd;
 		}
 
+		//Connection au serveur
 		if(connect(newsockfd, (struct sockaddr*)&addrinfo, sizeof(addrinfo)) == -1)
 		{ 
 			close(newsockfd);
@@ -786,7 +794,6 @@ static void * f_com_socket(void *p_arg)
 	uint16_t ucol, ulig;
 	
 	/* Association signal SIGUSR1 fonction callback connect_socket_adversaire() */
-	
 	memset (&signal_action, 0, sizeof(signal_action));
 	signal_action.sa_handler = connect_socket_adversaire;
 	
@@ -799,14 +806,11 @@ static void * f_com_socket(void *p_arg)
 	sigemptyset(&signal_mask);
 	sigaddset(&signal_mask, SIGUSR1);
 		
-//   if(pthread_sigmask(SIG_BLOCK, &signal_mask, NULL) == -1)
 	if(pthread_sigmask(SIG_BLOCK, &signal_mask, &signal_mask_org) == -1)
 	{
 		printf("[Pourt joueur %d] Erreur sigprocmask\n", port);
-		
 		return 0;
 	}
-
 
 	while(1)
 	{
@@ -818,6 +822,7 @@ static void * f_com_socket(void *p_arg)
 			exit(4);
 		}
 
+		//Permet d'empecher le client de se comporter en tant que serveur à l'envoie du signal démarer partie
 		if(disableAccept == 1) {
 			FD_CLR(sockfd, &read_fds);
 		}
@@ -843,6 +848,7 @@ static void * f_com_socket(void *p_arg)
 					}
 					else
 					{
+						//Ajout de sockfd au registre des sockets
 						FD_SET(newsockfd, &master);
 						if(newsockfd>fdmax)
 						{
@@ -861,16 +867,17 @@ static void * f_com_socket(void *p_arg)
 
 					gtk_widget_set_sensitive((GtkWidget *) gtk_builder_get_object (p_builder, "button_start"), FALSE);
 				} else { 
-					
+					/* Cas ou l'on recoit un message (serveur ou client) */
+
 					char buffer[MAXDATASIZE] = {0};
 					char *token, *saveptr;
 					uint16_t uCol, uLigne;
 					int col, ligne;
 
-					//Read the message
+					//Lecture du message
 					read( newsockfd , buffer, 1024); 
 
-					//Parse the message
+					//Décodage du message
 					token=strtok_r(buffer, ",", &saveptr);
 					sscanf(token, "%hu", &uCol);
 					token=strtok_r(NULL, ",", &saveptr);
@@ -878,10 +885,10 @@ static void * f_com_socket(void *p_arg)
 					col = (int) ntohs(uCol);
 					ligne = (int) ntohs(uLigne);
 
+					//Affichage du coup du joueur adverse 
 					jouer(col, ligne, couleur ^ 1 );
 
 					degele_damier();
-				
 				}
 			}
 			
@@ -1011,21 +1018,22 @@ int main (int argc, char ** argv)
 					 }  
 				 }
 
-		 
-				 /***** TO DO *****/
 				 
-				 // Initialisation socket et autres objets, et création thread pour communications avec joueur adverse
-			 
+				 /* Initialisation de notre socket d'écoute sur le port renseigné */
+
+				//Définition de la structure addr port & ip
 				struct sockaddr_in addrinfo;
-				
 				addrinfo.sin_family = AF_INET;
 				addrinfo.sin_port = htons(port);
 				addrinfo.sin_addr.s_addr = INADDR_ANY;
 
+				//Création de la socket
 				if((sockfd = socket(AF_INET, SOCK_STREAM, 0)) == -1) {
 					perror("server: socket");
 					return 1;
 				}
+
+				//Association de la socket avec la structure addr
 				if(bind(sockfd, (struct sockaddr*)&addrinfo, sizeof(addrinfo)) == -1)
 				{ 
 					close(sockfd);
@@ -1033,15 +1041,18 @@ int main (int argc, char ** argv)
 					return 1;
 				}
 
+				//Ecoute du serveur 
 				listen(sockfd, 5);
 
+				//Ajout de la socket au registre de socket
 				FD_SET(sockfd, &master);
 				if(sockfd>fdmax)
 				{
 					fdmax=sockfd;
 				}
 
-				 /** Création du thread **/
+				 /** Création du thread de communication **/
+				 //On  lui passe la fonction gérant les comunications : f_com_socket
 				 if((ret = pthread_create(&thr_id, NULL, f_com_socket, NULL)) == -1) {
 					 perror("error creating thread");
 				 } 
@@ -1057,7 +1068,5 @@ int main (int argc, char ** argv)
 				 g_error_free (p_err);
 			}
 	 }
- 
- 
 	 return EXIT_SUCCESS;
 }
