@@ -233,6 +233,16 @@ void change_img_case(int col, int lig, int couleur_j)
 	}
 }
 
+void partieFinie(score_blanc, score_noire){
+	if((score_blanc > score_noire) && couleur == 1) {
+		affiche_fenetre_gagne();
+	} else if ((score_noire > score_blanc) && couleur == 0) { 
+		affiche_fenetre_gagne();
+	} else {
+		affiche_fenetre_perdu();
+	}
+}
+
 int estAdjacent(int col, int ligne) {
 	if( ((col+1 <= 7) && (damier[col+1][ligne] != -1))
 	|| ((col-1 >= 0) && (damier[col-1][ligne] != -1))
@@ -243,82 +253,90 @@ int estAdjacent(int col, int ligne) {
 	return 0;
 }
 
-void encadrementVertical(col, ligne, couleur){
-	if(((col+1 <= 7) && damier[col+1][ligne] == (couleur ^ 1)) &&((col+2 <= 7) && damier[col+2][ligne] == couleur)) {
-		damier[col+1][ligne] = couleur;
-		change_img_case(col+1,ligne, couleur);
+int estDansLePlateau(int col, int ligne) {
+	if((col <= 7)  && (col >= 0) && (ligne <= 7) && (ligne >= 0)) 
+	{
+		return 1;
 	}
-	if(((col-1 > 0) && damier[col-1][ligne] == (couleur ^ 1)) &&((col-2 > 0) && damier[col-2][ligne] == couleur)) {
-		damier[col-1][ligne] = couleur;
-		change_img_case(col-1,ligne, couleur);
+	return 0;
+}
+
+void update_damier(int col, int ligne, int couleur_j) {
+	damier[col][ligne] = couleur_j;
+	change_img_case(col, ligne, couleur_j);
+}
+
+void encadrer(col, ligne, couleur_j, deplacementX, deplacementY){
+	int index = 1;
+	while((estDansLePlateau(col + deplacementX * index, ligne + deplacementY * index) == 1) &&
+	(damier[col + deplacementX * index][ligne + deplacementY * index] == (couleur_j ^ 1))) {
+		index++;
+	}
+	if((estDansLePlateau(col + deplacementX * index, ligne + deplacementY * index) == 1) &&
+	(damier[col + deplacementX * index][ligne + deplacementY * index] == couleur_j)) {
+		for(int i = 0; i < index; i ++) {
+			update_damier(col + deplacementX * i,ligne + deplacementY * i, couleur_j);
+		}
 	}
 }
 
-void encadrementHorizontal(col, ligne, couleur) {
-	if(((ligne+1 <= 7) && damier[col][ligne+1] == (couleur ^ 1)) &&((ligne+2 <= 7) && damier[col][ligne+2] == couleur)) {
-		damier[col][ligne+1] = couleur;
-		change_img_case(col,ligne+1, couleur);
-	}
-	if(((ligne-1 > 0) && damier[col][ligne-1] == (couleur ^ 1)) &&((ligne-2 > 0) && damier[col][ligne-2] == couleur)) {
-		damier[col][ligne-1] = couleur;
-		change_img_case(col,ligne-1, couleur);
-	}
-}
-
-void encadrementDiagonaleGauche(col, ligne, couleur) {
-	if(((ligne-1 > 0) && (col-1 > 0) && damier[col-1][ligne-1] == (couleur ^ 1)) 
-	&& ((ligne-2 > 0) && (col-2 > 0)  && damier[col-2][ligne-2] == couleur)) {
-		damier[col-1][ligne-1] = couleur;
-		change_img_case(col-1,ligne-1, couleur);
-	}
-	if(((ligne+1 <= 7) && (col+1 <= 7) && damier[col+1][ligne+1] == (couleur ^ 1)) &&
-		((ligne+2 <= 7) && (col+2 <= 7)  && damier[col+2][ligne+2] == couleur)) {
-		damier[col+1][ligne+1] = couleur;
-		change_img_case(col+1,ligne+1, couleur);
-	}
-}
-
-void encadrementDiagonaleDroite(col, ligne, couleur) {
-	if(((ligne-1 > 0) && (col+1 <=7) && damier[col+1][ligne-1] == (couleur ^ 1)) 
-	&& ((ligne-2 > 0) && (col+2 <= 7)  && damier[col+2][ligne-2] == couleur)) {
-		damier[col+1][ligne-1] = couleur;
-		change_img_case(col+1,ligne-1, couleur);
-	}
-	if(((ligne+1 <= 7) && (col-1 > 0) && damier[col-1][ligne+1] == (couleur ^ 1)) &&
-		((ligne+2 <= 7) && (col-2 > 0)  && damier[col-2][ligne+2] == couleur)) {
-		damier[col-1][ligne+1] = couleur;
-		change_img_case(col-1,ligne+1, couleur);
-	}
-}
 
 void encadrement(col, ligne, couleur){
-	//Implémentation incorrect :
-	//Il faut regarder toute la ligne et pas seulement celui à + 2
-	/**
-	 * TODO :
-	 * Il faut donc :
-	 * Partir de la case jouée
-	 * Et dans chaque direction regardé si il y'a un de la même couleur que la case joué
-	 * Si oui, on remplace tous
-	 **/
-	encadrementVertical(col, ligne, couleur);
-	encadrementHorizontal(col, ligne, couleur);
-	encadrementDiagonaleGauche(col, ligne, couleur);
-	encadrementDiagonaleDroite(col, ligne, couleur);
+	encadrer(col, ligne, couleur, 1 , 0);
+	encadrer(col, ligne, couleur, 1 , 1);
+	encadrer(col, ligne, couleur, 0 , 1);
+	encadrer(col, ligne, couleur, -1 , 0);
+	encadrer(col, ligne, couleur, 0 , -1);
+	encadrer(col, ligne, couleur, -1 , -1);
+	encadrer(col, ligne, couleur, 1 , -1);
+	encadrer(col, ligne, couleur, -1 , 1);
+}
+
+int get_cases(int* nb_blanc, int* nb_noir)
+{
+	int nb_vide = 0;
+    int i, j;
+    for (i = 0; i <= 7; i++)
+    {
+        for (j = 0; j <= 7; j++)
+        {
+            if(damier[i][j] == 0){
+                *nb_noir = *nb_noir + 1;
+            } else if(damier[i][j] == 1){
+				*nb_blanc = *nb_blanc + 1;
+			} else {
+				nb_vide ++;
+			}
+        }
+    }
+	return nb_vide;
+}
+
+void getScoreAndCheckFinish(){
+		int score_blanc = 0;
+		int score_noir = 0;
+		int nb_vide = get_cases(&score_blanc, &score_noir);
+
+		set_score_J1(score_blanc);
+		set_score_J2(score_noir);
+
+		printf("nb_vide : %d, score_blanc: %d, score_noir= %d", nb_vide, score_blanc, score_noir);
+		if(nb_vide == 0 || score_blanc == 0 || score_noir == 0) {
+			partieFinie(score_blanc, score_noir);
+		}
 }
 
 int jouer(int col, int ligne, int couleur_j) {
 	if(damier[col][ligne] == -1){
 		if(estAdjacent(col, ligne) == 1) {
-			damier[col][ligne]=couleur_j;
-			change_img_case(col,ligne, couleur_j);
+			update_damier(col, ligne, couleur_j);
 			encadrement(col,ligne, couleur_j);
+			getScoreAndCheckFinish();
 			return 1;
 		} 
 	}
 	return 0;
 }
-
 
 /* Fonction permettant changer nom joueur blanc dans cadre Score */
 void set_label_J1(char *texte)
@@ -860,8 +878,6 @@ static void * f_com_socket(void *p_arg)
 					col = (int) ntohs(uCol);
 					ligne = (int) ntohs(uLigne);
 
-					printf("couleur : %d, inverse : %d", couleur, couleur ^ 1);
-
 					jouer(col, ligne, couleur ^ 1 );
 
 					degele_damier();
@@ -1029,9 +1045,10 @@ int main (int argc, char ** argv)
 				 if((ret = pthread_create(&thr_id, NULL, f_com_socket, NULL)) == -1) {
 					 perror("error creating thread");
 				 } 
-	 
+
 				 gtk_widget_show_all(p_win);
 				 gtk_main();
+
 			}
 			else
 			{
