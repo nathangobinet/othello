@@ -27,7 +27,9 @@
 /* Variables globales */
 	int damier[8][8];	// tableau associe au damier
 	int couleur;		// 0 : pour noir, 1 : pour blanc
-	
+
+	int finie = 0;   //Si la partie est finie
+
 	int port;		// numero port passe a l'appel
 
 	char *addr_j2, *port_j2;	// Info sur adversaire
@@ -234,9 +236,10 @@ void change_img_case(int col, int lig, int couleur_j)
 }
 /* Fonction permettant de finir la partie, le joueur ayant le plus haut score recevre le popup "gagne" */
 void partie_finie(score_blanc, score_noire){
+	finie = 1;
 	if((score_blanc > score_noire) && couleur == 1) {
 		affiche_fenetre_gagne();
-	} else if ((score_noire > score_blanc) && couleur == 0) { 
+	} else if ((score_noire > score_blanc) && couleur == 0) {
 		affiche_fenetre_gagne();
 	} else {
 		affiche_fenetre_perdu();
@@ -411,7 +414,7 @@ int get_score_J2(void)
 /* Fonction appelee lors du clique sur une case du damier */
 static void coup_joueur(GtkWidget *p_case)
 {
-	int col, lig, type_msg, nb_piece, score;
+	int col, lig;
 	char buf[MAXDATASIZE];
 	
 	// Traduction coordonnees damier en indexes matrice damier
@@ -482,10 +485,8 @@ void affiche_fenetre_gagne(void)
 	GtkWidget *dialog;
 		
 	GtkDialogFlags flags = GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT;
-	
-	dialog = gtk_message_dialog_new(GTK_WINDOW(gtk_builder_get_object(p_builder, "window1")), flags, GTK_MESSAGE_INFO, GTK_BUTTONS_CLOSE, "Fin de la partie.\n\n Vous avez gagné!!!", NULL);
+	dialog = gtk_message_dialog_new(GTK_WINDOW(gtk_builder_get_object(p_builder, "window1")), flags, GTK_MESSAGE_INFO, GTK_BUTTONS_CLOSE, "Fin de la partie.\n\n Vous avez gagné!!!");
 	gtk_dialog_run(GTK_DIALOG (dialog));
-	
 	gtk_widget_destroy(dialog);
 }
 
@@ -496,7 +497,7 @@ void affiche_fenetre_perdu(void)
 		
 	GtkDialogFlags flags = GTK_DIALOG_MODAL | GTK_DIALOG_DESTROY_WITH_PARENT;
 	
-	dialog = gtk_message_dialog_new(GTK_WINDOW(gtk_builder_get_object(p_builder, "window1")), flags, GTK_MESSAGE_INFO, GTK_BUTTONS_CLOSE, "Fin de la partie.\n\n Vous avez perdu!", NULL);
+	dialog = gtk_message_dialog_new(GTK_WINDOW(gtk_builder_get_object(p_builder, "window1")), flags, GTK_MESSAGE_INFO, GTK_BUTTONS_CLOSE, "Fin de la partie.\n\n Vous avez perdu!");
 	gtk_dialog_run(GTK_DIALOG (dialog));
 	
 	gtk_widget_destroy(dialog);
@@ -781,18 +782,10 @@ static void connect_socket_adversaire(int sig)
 /* Fonction exécutée par le thread gérant les communications à travers la socket */
 static void * f_com_socket(void *p_arg)
 {
-	int i, nbytes, col, lig;
-	
-	char buf[MAXDATASIZE], *tmp, *p_parse;
-	int len, bytes_sent, t_msg_recu;
-
+	int i;
 	sigset_t signal_mask_org, signal_mask;
 	struct sigaction signal_action;
-//   int fd_signal;
-	
-	uint16_t type_msg, col_j2;
-	uint16_t ucol, ulig;
-	
+
 	/* Association signal SIGUSR1 fonction callback connect_socket_adversaire() */
 	memset (&signal_action, 0, sizeof(signal_action));
 	signal_action.sa_handler = connect_socket_adversaire;
@@ -867,28 +860,36 @@ static void * f_com_socket(void *p_arg)
 
 					gtk_widget_set_sensitive((GtkWidget *) gtk_builder_get_object (p_builder, "button_start"), FALSE);
 				} else { 
-					/* Cas ou l'on recoit un message (serveur ou client) */
 
-					char buffer[MAXDATASIZE] = {0};
-					char *token, *saveptr;
-					uint16_t uCol, uLigne;
-					int col, ligne;
+					//Permet d'eviter que le gagnant essaye de recevoir un signal alors que la partie est finie
+					//Corrige un bug de seg fault
+					//Mais il y'a toujours un bug
+					if(finie != 1) {
+						
+						/* Cas ou l'on recoit un message (serveur ou client) */
 
-					//Lecture du message
-					read( newsockfd , buffer, 1024); 
+						char buffer[MAXDATASIZE] = {0};
+						char *token, *saveptr;
+						uint16_t uCol, uLigne;
+						int col, ligne;
 
-					//Décodage du message
-					token=strtok_r(buffer, ",", &saveptr);
-					sscanf(token, "%hu", &uCol);
-					token=strtok_r(NULL, ",", &saveptr);
-					sscanf(token, "%hu", &uLigne);
-					col = (int) ntohs(uCol);
-					ligne = (int) ntohs(uLigne);
+						//Lecture du message
+						read( newsockfd , buffer, 1024); 
 
-					//Affichage du coup du joueur adverse 
-					jouer(col, ligne, couleur ^ 1 );
+						//Décodage du message
+						token=strtok_r(buffer, ",", &saveptr);
+						sscanf(token, "%hu", &uCol);
+						token=strtok_r(NULL, ",", &saveptr);
+						sscanf(token, "%hu", &uLigne);
+						col = (int) ntohs(uCol);
+						ligne = (int) ntohs(uLigne);
 
-					degele_damier();
+						//Affichage du coup du joueur adverse 
+						jouer(col, ligne, couleur ^ 1 );
+
+						degele_damier();
+
+					}
 				}
 			}
 			
